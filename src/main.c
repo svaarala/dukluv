@@ -454,10 +454,18 @@ static duk_ret_t duv_main(duk_context *ctx) {
   return 0;
 }
 
+#if DUK_VERSION >= 19999  /* duk_safe_call() udata added in 2.0.0 (1.99.99 is pre-release) */
+static duk_ret_t duv_stash_argv(duk_context *ctx, void *udata) {
+#else
 static duk_ret_t duv_stash_argv(duk_context *ctx) {
+#endif
   char **argv = (char **) duk_require_pointer(ctx, 0);
   int argc = (int) duk_require_int(ctx, 1);
   int i;
+
+#if DUK_VERSION >= 19999  /* duk_safe_call() udata added in 2.0.0 (1.99.99 is pre-release) */
+  (void) udata;
+#endif
 
   duk_push_global_stash(ctx);
   duk_push_array(ctx);
@@ -504,7 +512,11 @@ int main(int argc, char *argv[]) {
   // Stash argv for later access
   duk_push_pointer(ctx, (void *) argv);
   duk_push_int(ctx, argc);
+#if DUK_VERSION >= 19999  /* duk_safe_call() udata added in 2.0.0 (1.99.99 is pre-release) */
+  if (duk_safe_call(ctx, duv_stash_argv, NULL, 2, 1)) {
+#else
   if (duk_safe_call(ctx, duv_stash_argv, 2, 1)) {
+#endif
     duv_dump_error(ctx, -1);
     uv_loop_close(&loop);
     duk_destroy_heap(ctx);
