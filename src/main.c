@@ -478,6 +478,37 @@ static duk_ret_t duv_stash_argv(duk_context *ctx) {
   return 0;
 }
 
+#if DUK_VERSION >= 19999
+// Print/alert provider with Duktape 1.x semantics.
+static duk_ret_t duv_print_alert_helper(duk_context *ctx, FILE *fh) {
+  duk_idx_t nargs, i;
+  const duk_uint8_t *buf;
+  duk_size_t sz_buf;
+  const char nl = (const char) '\n';
+
+  nargs = duk_get_top(ctx);
+  if (nargs == 1 && duk_is_buffer(ctx, 0)) {
+    buf = (const duk_uint8_t *) duk_get_buffer(ctx, 0, &sz_buf);
+    fwrite((const void *) buf, 1, (size_t) sz_buf, fh);
+    return 0;
+  }
+  /* Coerce all arguments before writing anything so that if there are
+   * side effects with print() calls, they are written first.
+   */
+  duk_push_string(ctx, " ");
+  duk_insert(ctx, 0);
+  duk_join(ctx, nargs);
+  fprintf(fh, "%s\n", duk_to_string(ctx, -1));
+  return 0;
+}
+static duk_ret_t duv_print(duk_context *ctx) {
+  return duv_print_alert_helper(ctx, stdout);
+}
+static duk_ret_t duv_alert(duk_context *ctx) {
+  return duv_print_alert_helper(ctx, stderr);
+}
+#endif
+
 static void duv_dump_error(duk_context *ctx, duk_idx_t idx) {
   fprintf(stderr, "\nUncaught Exception:\n");
   if (duk_is_object(ctx, idx)) {
@@ -504,10 +535,22 @@ int main(int argc, char *argv[]) {
   // Tie loop and context together
   ctx = duk_create_heap(NULL, NULL, NULL, &loop, NULL);
   if (!ctx) {
-    fprintf(stderr, "Problem initiailizing duktape heap\n");
+    fprintf(stderr, "Problem initializing duktape heap\n");
     return -1;
   }
   loop.data = ctx;
+
+  // Minimal print/alert (removed in Duktape 2.x)
+#if DUK_VERSION >= 19999
+  duk_push_global_object(ctx);
+  duk_push_string(ctx, "print");
+  duk_push_c_function(ctx, duv_print, DUK_VARARGS);
+  duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_VALUE | DUK_DEFPROP_SET_WRITABLE | DUK_DEFPROP_SET_CONFIGURABLE);
+  duk_push_string(ctx, "alert");
+  duk_push_c_function(ctx, duv_alert, DUK_VARARGS);
+  duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_VALUE | DUK_DEFPROP_SET_WRITABLE | DUK_DEFPROP_SET_CONFIGURABLE);
+  duk_pop(ctx);
+#endif
 
   // Stash argv for later access
   duk_push_pointer(ctx, (void *) argv);
