@@ -521,6 +521,22 @@ static void duv_dump_error(duk_context *ctx, duk_idx_t idx) {
   }
 }
 
+#if DUK_VERSION >= 19999
+static void duv_fatal(void *udata, const char *msg) {
+  (void) udata;
+  fprintf(stderr, "*** FATAL ERROR: %s\n", (msg ? msg : "no message"));
+  fflush(stderr);
+  abort();
+}
+#else
+static void duv_fatal(duk_context *ctx, duk_errcode_t err_code, const char *msg) {
+  (void) ctx; (void) err_code;
+  fprintf(stderr, "*** FATAL ERROR: %s\n", (msg ? msg : "no message"));
+  fflush(stderr);
+  abort();
+}
+#endif
+
 int main(int argc, char *argv[]) {
   duk_context *ctx = NULL;
   uv_loop_init(&loop);
@@ -533,7 +549,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Tie loop and context together
-  ctx = duk_create_heap(NULL, NULL, NULL, &loop, NULL);
+  ctx = duk_create_heap(NULL, NULL, NULL, &loop, duv_fatal);
   if (!ctx) {
     fprintf(stderr, "Problem initializing duktape heap\n");
     return -1;
