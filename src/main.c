@@ -422,6 +422,13 @@ static duk_ret_t duv_main(duk_context *ctx) {
   duk_put_prop_string(ctx, -2, "loadlib");
   duk_pop(ctx);
 
+#if DUK_VERSION >= 19999
+  /* Built-in module loader was removed in 2.0.0.  Duktape.modLoaded[]
+   * was also removed and we depend on it, so add it if missing.
+   */
+  duk_eval_string_noresult(ctx, "Object.defineProperty(Duktape, 'modLoaded', { value: {}, writable: true, enumerable: false, configurable: true });");
+#endif
+
   // Put in some quick globals to test things.
   duk_push_c_function(ctx, duv_path_join, DUK_VARARGS);
   duk_put_prop_string(ctx, -2, "pathJoin");
