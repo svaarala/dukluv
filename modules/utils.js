@@ -25,6 +25,21 @@ cbrace = colorize("braces", '}');
 comma = colorize("sep", ',');
 colon = colorize("sep", ':');
 
+var bufferObjectTypes = {
+  Buffer: true,
+  ArrayBuffer: true,  // Duktape 2.x: both plain buffer and ArrayBuffer
+  Uint8Array: true,
+  Uint8ClampedArray: true,
+  Int8Array: true,
+  Uint16Array: true,
+  Int16Array: true,
+  Uint32Array: true,
+  Int32Array: true,
+  Float32Array: true,
+  Float64Array: true,
+  DataView: true
+};
+
 function color(color_name) {
  return "\x1b[" + (color_name ? theme[color_name] : "0") + "m";
 }
@@ -33,13 +48,19 @@ function colorize(color_name, string, reset_name) {
   return color(color_name) + string + color(reset_name);
 }
 
-function dump(value) {
+var getPlainBuffer = typeof ArrayBuffer.plainOf === 'function' ?
+  ArrayBuffer.plainOf : Duktape.Buffer;
+var isPlainBuffer = function (v) {
+  return Duktape.info(v)[0] === 7;  // Duktape 1.x and 2.x
+};
 
+function dump(value) {
   var seen = [];
   return dumper(value, 0);
-  function dumper(value, depth) {
-    var type = typeof value;
 
+  function dumper(value, depth) {
+    var i, n, t;
+    var type = typeof value;
     if (type === "undefined") {
       return colorize("undefined", "undefined");
     }
@@ -60,6 +81,8 @@ function dump(value) {
         });
     }
     var info = Duktape.info(value);
+    var fullName = Object.prototype.toString.call(value);
+    var name = fullName.substring(8, fullName.length - 1);
     if (type === "function") {
       var fname = value.name || info[1];
       // Native CFunctions don't have a .prototype property.
@@ -68,24 +91,31 @@ function dump(value) {
       }
       return colorize("cfunction", "[Native " + fname + "]");
     }
-    var fullName = Object.prototype.toString.call(value);
-    var name = fullName.substring(8, fullName.length - 1);
     if (name === "RegExp") {
       return colorize("regexp", "[RegExp " + value + "]");
     }
     if (name === "Thread") {
       return colorize("thread", "[Thread " + info[1] + "]");
     }
-    if (name === "Buffer") {
-      var preview = Array.prototype.slice.call(value, 0, 10).map(function (byte) {
-        return byte < 16 ? "0" + byte.toString(16) : byte.toString(16);
-      }).join(" ");
-      if (value.length > 10) { preview += "..."; }
-      // Fixed buffers have undefined for info[4]
-      if (info[4] === undefined) {
-        return colorize("buffer", "[Buffer " + preview + "]");
+    if (type === "buffer" || // Duktape 1.x plain buffer
+        bufferObjectTypes[name]) {  // Duktape 2.x plain buffer, ArrayBuffer, typed array, Node.js Buffer
+      var plain = getPlainBuffer(value);
+      var bytes = [];
+      for (i = 0, n = Math.min(value.byteLength, 10); i < n; i++) {
+        t = plain[value.byteOffset + i];
+        bytes.push(t < 16 ? "0" + t.toString(16) : t.toString(16));
       }
-      return colorize("dbuffer", "[Dynamic Buffer " + preview + "]");
+      var preview = bytes.join(" ");
+      if (value.byteLength > 10) { preview += "..."; }
+      if (isPlainBuffer(value)) {
+        if (info[4] === void 0) {
+          // Fixed buffers have undefined for info[4]
+          return colorize("buffer", "[Buffer " + preview + "]");
+        } else {
+          return colorize("dbuffer", "[Dynamic Buffer " + preview + "]");
+        }
+      }
+      return colorize("buffer", "[" + name + " " + preview + "]");
     }
     if (name === "Pointer") {
       return colorize("pointer", "[Pointer " + info[1] + "]");
