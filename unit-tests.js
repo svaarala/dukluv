@@ -203,7 +203,7 @@ test("pretty printer", function () {
   p({
     thread: new Duktape.Thread(test),
     buffer: timer,
-    dynamic: new Duktape.Buffer("Hello"),
+    dynamic: (typeof ArrayBuffer.allocPlain === 'function' ? Object(ArrayBuffer.allocPlain("Hello")) : new Duktape.Buffer("Hello")),
     pointer: new Duktape.Pointer(p),
     error: new Error("test"),
     typeError: new TypeError("test2"),
@@ -216,7 +216,7 @@ test("pretty printer", function () {
 
   p({
     thread: Duktape.Thread(test),
-    dynamic: Duktape.Buffer("Hello"),
+    dynamic: (typeof ArrayBuffer.allocPlain === 'function' ? ArrayBuffer.allocPlain("Hello") : Duktape.Buffer("Hello")),
     pointer: Duktape.Pointer(p),
     error: Error("test"),
     typeError: TypeError("test2"),

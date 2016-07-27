@@ -4,7 +4,7 @@ var utils = require('./modules/utils.js');
 var p = utils.prettyPrint;
 
 function Timer() {
-  var obj = new Duktape.Buffer(uv.new_timer());
+  var obj = Object(uv.new_timer());  // coerce to ArrayBuffer
   obj.__proto__ = Timer.prototype;
   return obj;
 }

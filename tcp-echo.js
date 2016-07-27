@@ -59,7 +59,7 @@ Client.prototype.onConnect = function onConnect(err) {
   assert(this === client);
   if (err) { throw err; }
   this.readStart(this.onRead);
-  var buffer = Duktape.Buffer(3);
+  var buffer = (typeof ArrayBuffer.allocPlain === 'function' ? ArrayBuffer.allocPlain(3) : Duktape.Buffer(3));
   buffer[0] = 0x10;
   buffer[1] = 0x00;
   buffer[2] = 0x50;
