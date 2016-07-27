@@ -16,7 +16,11 @@ uv.read_start(utils.stdin, function (err, chunk) {
   if (err) { throw err; }
   if (!chunk) { return uv.read_stop(utils.stdin); }
   try {
-    p(eval(chunk.toString()));
+    if (Duktape.version >= 19999) {
+      p(eval(String.fromBuffer(chunk)));
+    } else {
+      p(eval(chunk.toString()));
+    }
   }
   catch (error) {
     uv.write(utils.stderr, utils.colorize("error", error.toString()) + "\n");
