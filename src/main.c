@@ -563,6 +563,11 @@ int main(int argc, char *argv[]) {
   }
   loop.data = ctx;
 
+  // Logging framework (removed in Duktape 2.x)
+#if DUK_VERSION >= 19999
+  duk_logging_init(ctx, 0 /*flags*/);
+#endif
+
   // Minimal print/alert (removed in Duktape 2.x)
 #if DUK_VERSION >= 19999
   duk_push_global_object(ctx);
