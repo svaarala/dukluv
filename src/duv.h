@@ -3,6 +3,9 @@
 
 #include "uv.h"
 #include "duktape.h"
+#if DUK_VERSION >= 19999
+#include "duk_v1_compat.h"
+#endif
 #include <assert.h>
 
 #if !defined(_WIN32)
